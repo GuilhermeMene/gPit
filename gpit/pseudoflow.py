@@ -4,24 +4,13 @@ import networkx as NetX
 import pseudoflow as pf
 import pandas as pd
 
-def CreateExtArcs(BM, nx, ny, nz, Graph, Var):
-    Sink = np.int64(nx*ny*nz + 1)
-    for t_z in range(nz):
-        pos_z = nz - t_z - 1
-        for t_y in range(t_z, ny-t_z):
-            for t_x in range(t_z,nx-t_z):
-                p_i = 1 + t_x + nx*t_y + ny*nx*pos_z 
-                Capacity = np.absolute(np.around(BM[p_i-1,Var], decimals=2))
-                if BM[p_i-1,Var] < 0: #Negative local Economic Value
-                    Graph.add_edge(p_i, Sink, const=Capacity, mult=-1)
-                else:
-                    Graph.add_edge(0, p_i, const=Capacity, mult=1)
-    return Graph
-
 
 class Pseudoflow:
 
     def __init__(self, bmpath:str):
+
+        self.MinCost = 0
+        self.ProcCost = 0
 
         #Read the blockmodel
         try: 
@@ -41,33 +30,117 @@ class Pseudoflow:
             'zorg': zorg,
             'xs': xs,
             'ys': ys,
-            'zs': zs
+            'zs': zs, 
+            'volume': xs*ys*zs
         }
         return self   
 
-    def setEPVParms(self):
+    def setEPVParms(self, metal:str, unit:str):        
 
         #Function to save the economic parameters for the pit optimisation 
         print("Enter the economic parameters for pit optimisation")
-        mprice = float(input("Enter the Metal Price (USD/lb): "))
-        sel_cost = float(input("Enter the Selling Cost (USD/lb): "))
-        min_cost = float(input("Enter the Mining Cost (USD/Ton): "))
-        proc_cost = float(input("Enter the Processing Cost (USD/Ton): "))
+        mprice = float(input("Enter the Metal Price (USD/lb) or (USD/ozt): "))
+        sel_cost = float(input("Enter the Selling Cost (USD/lb) or (USD/ozt): "))
+        recovery = float(input("Enter the recovery of the metal (0 -> 1): "))
+        dilution = float(input("Set the dilution rate of mine (0 -> 1): "))
 
-        self.EPVparms = {
+        self.EPVparms = {}
+        self.EPVparms[metal] = {
+            'unit': unit,
             'mprice': mprice ,
             'sel_cost': sel_cost ,
-            'min_cost': min_cost ,
-            'proc_cost': proc_cost
-        }
+            'recovery': recovery, 
+            'dilution' : dilution
+        }        
+
+        #Check mine and proc costs 
+        if self.MinCost == 0 and self.ProcCost == 0:
+            print("Enter the mining and processing costs for pit optimisation")
+            self.MinCost = float(input("Enter the Mining Cost (USD/Ton): "))
+            self.ProcCost = float(input("Enter the Processing Cost (USD/Ton): "))
+        else: 
+            pass
+
+        return self
+    
+    def calculateCutOff(self, unit='percent', metal:str):
+
+        #Check the unit of the calculation 
+        if unit == 'percent':
+            try: 
+                self.CutOffGrade = ((self.EPVparms[metal].min_cost + (self.EPVparms[metal].proc_cost*(1 + self.EPVparms[metal].dilution))) / 
+                                        (((self.EPVparms[metal].mprice - self.EPVparms[metal].sel_cost)*22.046)*self.EPVparms[metal].recovery))
+            except: 
+                print("Set the economic parameters first")
+
+        elif unit == 'ozt':
+            try:
+                self.CutOffGrade = (((self.EPVparms[metal].min_cost + (self.EPVparms[metal].proc_cost*(1 + self.EPVparms[metal].dilution))) / 
+                                    ((self.EPVparms[metal].mprice - self.EPVparms[metal].sel_cost)*self.EPVparms[metal].recovery))*31.1)
+            except:
+                print("Set the economic parameters first")
+
+        else: 
+            print("Set the correct unit for the Cut-Off grade calculation")
+
         return self
 
-        
-    def calculateEPV(self, OreGrade:str, Density:str):
+    def calcEPV(self, OreGrade, Unit, Density, CutOffMetal:str):
+
+        mrecvalue = 0 
+
+        #Check and calculate the density of each block 
+        if isinstance(Density, str):
+            self.tonnes = [self.bmparms.volume * self.blockmodel[Density] for self.blockmodel[Density] in self.blockmodel[Density]]
+        if isinstance(Density, float):
+            bmlen = [0] * len(self.blockmodel) 
+            self.tonnes = [self.bmparms.volume * Density for bmlen in bmlen]
 
         #TODO
+        #TODO
+        #TODO
+
+        """
+
+        #Calculate the metal recovery value
+        if isinstance(OreGrade, list) and isinstance(Unit, list):
+            if len(OreGrade) == len(self.EPVparms) == len(Unit):
+                for i in OreGrade:
+
+                    for i in self.blockmodel[OreGrade[i]]:
 
 
+                    if Unit[i] == 'ozt':  
+
+                        metalton = self.tonnes * self.blockmodel[OreGrade[i]]
+                    if Unit[i] == 'percent':                        
+                        metalton = self.tonnes * (self.blockmodel[OreGrade[i]] / 100)
+                    else:
+                        print("The metal Unit must be 'ozt' or 'percent'")
+                        break
+                    try: 
+                        mrecvalue += (metalton * self.EPVparms[i].recovery*((self.EPVparms[i].mprice - self.EPVparms[i].sel_cost)*2204))
+                    except:
+                        print("The metal name must be the same between the OreGrade argument and EPV parameters")
+
+                #Check CutOff grade for the EPV final values
+                if 
+                #Calculate the EPV final values discounting the metal recovery by mining and processing costs
+                self.blockmodel['EPV'] = mrecvalue - [(self.tonnes * (self.MinCost + self.ProcCost)) for self.tonnes in self.tonnes]
+            else:
+                print("The number of metal must be the same between OreGrade, Unit and EPV Parameters")  
+
+        if isinstance(OreGrade, str) and isinstance(Unit, str):
+            
+            self.blockmodel['EPV'] = ((self.mprice - self.sel_cost) * 2204)* self. 
+
+        """
+
+
+
+####
+####
+####
 
 
 def Pseudoflow_UPL(blockmodel, nx, ny, nz, input, output): 
@@ -104,7 +177,7 @@ def Pseudoflow_UPL(blockmodel, nx, ny, nz, input, output):
     for indUPL in range(len(InsideList)):         
         # Set blocks inside UPL as one
         blockmodel[np.int64(InsideList[indUPL] -1),output] = 1    
- 
+
 
     return blockmodel
 
