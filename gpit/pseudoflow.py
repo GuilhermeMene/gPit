@@ -1,260 +1,98 @@
+#Pseudoflow module is part of the gPit software  (https://github.com/GuilhermeMene/gPit)
+#Copyright (c) 2023 gPit Developers 
+#Distributed under the terms of MIT License (https://github.com/GuilhermeMene/gPit/blob/main/LICENSE)
+
+#Based on Sebastian Avalos code disributed under MIT License 
+#https://github.com/geometatqueens/2020-Pseudoflow-Python
+
+
 
 import numpy as np
 import networkx as NetX
 import pseudoflow as pf
 import pandas as pd
 
+import precedence as prec
+
 
 class Pseudoflow:
 
-    def __init__(self, bmpath:str):
+    def __init__(self, blockmodel, bmParms):
 
-        self.MinCost = 0
-        self.ProcCost = 0
-
-        #Read the blockmodel
         try: 
-            self.blockmodel = pd.read_csv(bmpath, delimiter=',')
-        except:
-            try: 
-                self.blockmodel = pd.read_csv(bmpath, delimiter=';')
-            except Exception as e: print(e)
+            #Create the inputs 
+            if isinstance(blockmodel, pd.DataFrame):
+                self.blockmodel = blockmodel
+            else: 
+                print("The blockmodel must be a pandas Dataframe")
 
-    def setBMParms(self, nx:int, ny:int, nz:int, xorg:float, yorg:float, zorg:float, xs:int, ys:int, zs:int):
-        self.bmparms = {
-            'nx': nx,
-            'ny': ny,
-            'nz': nz,
-            'xorg': xorg,
-            'yorg': yorg,
-            'zorg': zorg,
-            'xs': xs,
-            'ys': ys,
-            'zs': zs, 
-            'volume': xs*ys*zs
-        }
-        return self   
+            if len(bmParms) == 10: 
+                self.bmParms = bmParms
+            else: 
+                print("The blockmodel Parameters must contain 10 parameters - Set the blockmodel parameters first")
 
-    def setEPVParms(self, metal:str, unit:str):        
+        except Exception as e: print(e)
 
-        #Function to save the economic parameters for the pit optimisation 
-        print("Enter the economic parameters for pit optimisation")
-        mprice = float(input("Enter the Metal Price (USD/lb) or (USD/ozt): "))
-        sel_cost = float(input("Enter the Selling Cost (USD/lb) or (USD/ozt): "))
-        recovery = float(input("Enter the recovery of the metal (0 -> 1): "))
-        dilution = float(input("Set the dilution rate of mine (0 -> 1): "))
+        #Set the EPV variable 
+        self.EPV = self.blockmodel['EPV'].to_numpy
 
-        self.EPVparms = {}
-        self.EPVparms[metal] = {
-            'unit': unit,
-            'mprice': mprice ,
-            'sel_cost': sel_cost ,
-            'recovery': recovery, 
-            'dilution' : dilution
-        }        
+        #Set the Graph 
+        self.Graph = NetX.DiGraph()
 
-        #Check mine and proc costs 
-        if self.MinCost == 0 and self.ProcCost == 0:
-            print("Enter the mining and processing costs for pit optimisation")
-            self.MinCost = float(input("Enter the Mining Cost (USD/Ton): "))
-            self.ProcCost = float(input("Enter the Processing Cost (USD/Ton): "))
-        else: 
-            pass
+        #Create the Sink 
+        self.sink = np.Int64(self.bmParms.nx * self.bmParms.ny * self.bmParms.nz + 1)
 
-        return self
-    
-    def calculateCutOff(self, unit='percent', metal:str):
+    def UPL(self, precedence:str):
 
-        #Check the unit of the calculation 
-        if unit == 'percent':
-            try: 
-                self.CutOffGrade = ((self.EPVparms[metal].min_cost + (self.EPVparms[metal].proc_cost*(1 + self.EPVparms[metal].dilution))) / 
-                                        (((self.EPVparms[metal].mprice - self.EPVparms[metal].sel_cost)*22.046)*self.EPVparms[metal].recovery))
-            except: 
-                print("Set the economic parameters first")
+        source = 0        
+        
+        #Create the external arcs 
+        self.Graph = self.CreateExtArcs()
 
-        elif unit == 'ozt':
-            try:
-                self.CutOffGrade = (((self.EPVparms[metal].min_cost + (self.EPVparms[metal].proc_cost*(1 + self.EPVparms[metal].dilution))) / 
-                                    ((self.EPVparms[metal].mprice - self.EPVparms[metal].sel_cost)*self.EPVparms[metal].recovery))*31.1)
-            except:
-                print("Set the economic parameters first")
+        #Create Internal arcs 
+        for ind_z in range(self.bmParms.nz - 1):
+            pos_z = self.bmParms.nz - ind_z - 2
+            for pos_y in range(ind_z + 1, self.bmParms.ny - ind_z - 1):
+                for pos_x in range(ind_z + 1, self.bmParms.nx - ind_z - 1):
 
-        else: 
-            print("Set the correct unit for the Cut-Off grade calculation")
-
-        return self
-
-    def calcEPV(self, OreGrade, Unit, Density, CutOffMetal:str):
-
-        mrecvalue = 0 
-
-        #Check and calculate the density of each block 
-        if isinstance(Density, str):
-            self.tonnes = [self.bmparms.volume * self.blockmodel[Density] for self.blockmodel[Density] in self.blockmodel[Density]]
-        if isinstance(Density, float):
-            bmlen = [0] * len(self.blockmodel) 
-            self.tonnes = [self.bmparms.volume * Density for bmlen in bmlen]
-
-        #TODO
-        #TODO
-        #TODO
-
-        """
-
-        #Calculate the metal recovery value
-        if isinstance(OreGrade, list) and isinstance(Unit, list):
-            if len(OreGrade) == len(self.EPVparms) == len(Unit):
-                for i in OreGrade:
-
-                    for i in self.blockmodel[OreGrade[i]]:
-
-
-                    if Unit[i] == 'ozt':  
-
-                        metalton = self.tonnes * self.blockmodel[OreGrade[i]]
-                    if Unit[i] == 'percent':                        
-                        metalton = self.tonnes * (self.blockmodel[OreGrade[i]] / 100)
+                    if precedence == '1x5':
+                        self.Graph = prec.IA1x5(pos_x, pos_y, pos_z, self.bmParms.nx, self.bmParms.ny, Graph=self.Graph)
+                    if precedence == '1x9':
+                        self.Graph = prec.IA1x9(pos_x, pos_y, pos_z, self.bmParms.nx, self.bmParms.ny, Graph=self.Graph)
                     else:
-                        print("The metal Unit must be 'ozt' or 'percent'")
+                        print("The precedence must be '5x1' or '9x1' ")
                         break
-                    try: 
-                        mrecvalue += (metalton * self.EPVparms[i].recovery*((self.EPVparms[i].mprice - self.EPVparms[i].sel_cost)*2204))
-                    except:
-                        print("The metal name must be the same between the OreGrade argument and EPV parameters")
 
-                #Check CutOff grade for the EPV final values
-                if 
-                #Calculate the EPV final values discounting the metal recovery by mining and processing costs
-                self.blockmodel['EPV'] = mrecvalue - [(self.tonnes * (self.MinCost + self.ProcCost)) for self.tonnes in self.tonnes]
-            else:
-                print("The number of metal must be the same between OreGrade, Unit and EPV Parameters")  
+        #Solving the minimum cut problem via pf.hpf solver
+        RngLambda = [0]
+        breakpoints, cuts, info = pf.hpf(self.Graph, source, self.sink, const_cap="const", mult_cap="mult", lambdaRange=RngLambda, roundNegativeCapacity=False)
 
-        if isinstance(OreGrade, str) and isinstance(Unit, str):
-            
-            self.blockmodel['EPV'] = ((self.mprice - self.sel_cost) * 2204)* self. 
+        #Get the UPL inside values 
+        B = {x:y for x, y in cuts.items() if y == [1] and x!=0}
+        InsideList = list(B.keys())
 
-        """
+        #Create a numpy array with zeros 
+        self.upl = np.zeros(len(self.EPV))
 
+        for indUPL in range(len(InsideList)):         
+            # Set blocks inside UPL as one
+            self.upl[np.int64(InsideList[indUPL] -1)] = 1  
 
-
-####
-####
-####
+        return self 
 
 
-def Pseudoflow_UPL(blockmodel, nx, ny, nz, input, output): 
-    source = 0
-    sink = np.int64(nx*ny*nz + 1)
-    
-    # Graph creation
-    Graph = NetX.DiGraph()
-    
-    # External arcs creation by external function. Source - Nodes, Nodes - Sink
-    Graph = CreateExternalArcs(blockmodel, nx, ny, nz, Graph=Graph, Var=input)
-    
-    # Internal arcs creation by external function. 
-    for ind_z in range(nz - 1):
-        pos_z = nz - ind_z - 2
-        for pos_y in range(ind_z + 1, ny - ind_z - 1):
-            for pos_x in range(ind_z + 1, nx - ind_z - 1):
-                # Precedence of 5 blocks
-                Graph = CreateInternalArcs1x5(pos_x, pos_y, pos_z, nx, ny, Graph=Graph)
-                # Precedence of 9 blocks
-                #Graph = CreateInternalArcs1x9(pos_x, pos_y, pos_z, nx, ny, Graph=Graph)
-    
-    # Solving the minimum cut problem via pf.hpf solver
-    RangeLambda = [0]
-    breakpoints, cuts, info = pf.hpf(Graph, source, sink, const_cap="const", mult_cap="mult", lambdaRange=RangeLambda, roundNegativeCapacity=False)
-    
-    #Going over the cuts.items finding the nodes inside the resulting UPL.
-    B = {x:y for x, y in cuts.items() if y == [1] and x!=0}
-    InsideList = list(B.keys())
-    
-    # Set all blocks as zero
-    blockmodel[:,output] = 0 
+    def CreateExtArcs(self):
 
-    for indUPL in range(len(InsideList)):         
-        # Set blocks inside UPL as one
-        blockmodel[np.int64(InsideList[indUPL] -1),output] = 1    
+        for t_z in range(self.bmParms.nz):
+            pos_z = self.bmParms.nz - t_z - 1
+            for t_y in range(t_z, self.bmParms.ny-t_z):
+                for t_x in range(t_z,self.bmParms.nx-t_z):
+                    p_i = 1 + t_x + self.bmParms.nx*t_y + self.bmParms.ny*self.bmParms.nx*pos_z 
+                    Capacity = np.absolute(np.around(self.EPV[p_i-1], decimals=2))
+                    if self.EPV[p_i-1] < 0: #Negative local Economic Value
+                        self.Graph.add_edge(p_i, self.sink, const=Capacity, mult=-1)
+                    else:
+                        self.Graph.add_edge(0, p_i, const=Capacity, mult=1)
 
+        return self
 
-    return blockmodel
-
-def CreateExternalArcs(BM, nx, ny, nz, Graph, Var):
-    Sink = np.int64(nx*ny*nz + 1)
-    for t_z in range(nz):
-        pos_z = nz - t_z - 1
-        for t_y in range(t_z, ny-t_z):
-            for t_x in range(t_z,nx-t_z):
-                p_i = 1 + t_x + nx*t_y + ny*nx*pos_z 
-                Capacity = np.absolute(np.around(BM[p_i-1,Var], decimals=2))
-                if BM[p_i-1,Var] < 0: #Negative local Economic Value
-                    Graph.add_edge(p_i, Sink, const=Capacity, mult=-1)
-                else:
-                    Graph.add_edge(0, p_i, const=Capacity, mult=1)
-    return Graph
-
-def CreateInternalArcs1x9(pos_x, pos_y, pos_z, nx, ny, Graph):
-
-    p_0 =  1 + pos_x + nx*pos_y + ny*nx*pos_z    
-    p_1 =  1 + (pos_x-1) + nx*(pos_y-1) + ny*nx*(pos_z+1)
-    p_2 =  1 + (pos_x) + nx*(pos_y-1) + ny*nx*(pos_z+1)
-    p_3 =  1 + (pos_x+1) + nx*(pos_y-1) + ny*nx*(pos_z+1)
-    p_4 =  1 + (pos_x-1) + nx*(pos_y) + ny*nx*(pos_z+1)
-    p_5 =  1 + (pos_x) + nx*(pos_y) + ny*nx*(pos_z+1)
-    p_6 =  1 + (pos_x+1) + nx*(pos_y) + ny*nx*(pos_z+1)
-    p_7 =  1 + (pos_x-1) + nx*(pos_y+1) + ny*nx*(pos_z+1)
-    p_8 =  1 + (pos_x) + nx*(pos_y+1) + ny*nx*(pos_z+1)
-    p_9 =  1 + (pos_x+1) + nx*(pos_y+1) + ny*nx*(pos_z+1)
-    
-    Graph.add_edge(p_0, p_1, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_2, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_3, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_4, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_5, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_6, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_7, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_8, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_9, const=99e99, mult=1)
-    
-    return Graph
-
-def CreateInternalArcs1x5(pos_x, pos_y, pos_z, nx, ny, Graph):
-    p_0 =  1 + pos_x + nx*pos_y + ny*nx*pos_z
-    p_2 =  1 + (pos_x) + nx*(pos_y-1) + ny*nx*(pos_z+1)
-    p_4 =  1 + (pos_x-1) + nx*(pos_y) + ny*nx*(pos_z+1)
-    p_5 =  1 + (pos_x) + nx*(pos_y) + ny*nx*(pos_z+1)
-    p_6 =  1 + (pos_x+1) + nx*(pos_y) + ny*nx*(pos_z+1)
-    p_8 =  1 + (pos_x) + nx*(pos_y+1) + ny*nx*(pos_z+1)
-
-    Graph.add_edge(p_0, p_2, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_4, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_5, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_6, const=99e99, mult=1)
-    Graph.add_edge(p_0, p_8, const=99e99, mult=1)
-
-    return Graph
-
-
-
-def main():    
-    print("Start")
-    start_time = time.time() 
-    nx, xmn, xsiz = 44, 24300, 16
-    ny, ymn, ysiz = 62, 24800, 16
-    nz, zmn, zsiz = 26, 3600, 16
-
-    filein = input("Provide the block model file: ")
-    BlockModel = np.loadtxt(filein) # Import Block Model
-    BlockModel = Pseudoflow_UPL(BM=BlockModel, nx=nx, ny=ny, nz=nz, input=4, VarOut=5)
-    
-    '''Save Block Model'''
-    fileout = input("Provide a name for block model file: ")
-    np.savetxt(fname=fileout, X=BlockModel, fmt='%.3f', delimiter='\t')	
-
-    return print("--%s seconds of the whole process-" % (np.around((time.time() - start_time), decimals=2)))  
-
-
-if __name__ == "__main__":
-    main()
