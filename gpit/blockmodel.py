@@ -81,18 +81,10 @@ class BlockModel:
 
         return self
 
-    def calcEPV(self, OreGrade, Unit, Density):
+    def calcEPV(self, OreGrade, Unit, Density, ColName:str, Rf=1):
 
         mrecvalue = 0 
         block_value = []
-
-        """
-        #Check the OreGrade input and set 
-        if isinstance(OreGrade, list):
-            metal = OreGrade[0]
-        else:
-            metal = OreGrade
-        """
 
         #Check and calculate the density of each block 
         if isinstance(Density, str):
@@ -111,38 +103,63 @@ class BlockModel:
 
                     if Unit == "ozt":
                         #Block value for process calculation
-                        block_value.append(((self.blockmodel[OreGrade][ind] * self.EPVparms[OreGrade]['recovery'] * self.tonnes[ind] *  
-                                            (self.EPVparms[OreGrade]['mprice'] - self.EPVparms[OreGrade]['sel_cost'])) - ((self.MinCost + self.ProcCost) * self.tonnes[ind])))
+                        process_value = ((self.blockmodel[OreGrade][ind] * self.EPVparms[OreGrade]['recovery'] * self.tonnes[ind] *  
+                                            (self.EPVparms[OreGrade]['mprice'] - self.EPVparms[OreGrade]['sel_cost'])) * Rf)
+
+                        block_value.append(process_value - ((self.MinCost + self.ProcCost) * self.tonnes[ind]))
                     if Unit == "percent":
                         #Block value for process calculation
-                        block_value.append((((self.blockmodel[OreGrade][ind]/100) * self.EPVparms[OreGrade]['recovery'] * self.tonnes[ind] *  
-                                            ((self.EPVparms[OreGrade]['mprice'] - self.EPVparms[OreGrade]['sel_cost']) * 2204)) - ((self.MinCost + self.ProcCost) * self.tonnes[ind])))
+                        process_value = ((self.blockmodel[OreGrade][ind]/100) * self.EPVparms[OreGrade]['recovery'] * self.tonnes[ind] *  
+                                            ((self.EPVparms[OreGrade]['mprice'] - self.EPVparms[OreGrade]['sel_cost']) * 2204) * Rf)
+                        
+                        block_value.append(process_value - ((self.MinCost + self.ProcCost) * self.tonnes[ind]))
 
                 #More than one metal passed by list 
-                if isinstance(OreGrade, list) and isinstance(Unit, list):
+                elif isinstance(OreGrade, list) and isinstance(Unit, list):
 
                     for m in OreGrade:
                         if Unit[m] == "ozt":
                             #Calculate the Troy ounce value 
-                            mrecvalue += (self.tonnes[ind] * self.blockmodel[OreGrade][ind] * self.EPVparms[OreGrade[m]]['recovery'] * 
-                                            (self.EPVparms[OreGrade[m]]['mprice'] - self.EPVparms[OreGrade[m]]['sel_cost']))
+                            mrecvalue += ((self.tonnes[ind] * self.blockmodel[OreGrade][ind] * self.EPVparms[OreGrade[m]]['recovery'] * 
+                                            (self.EPVparms[OreGrade[m]]['mprice'] - self.EPVparms[OreGrade[m]]['sel_cost'])) * Rf)
                         if Unit[m] == "percent":
                             #Calculate the Percent value
-                            mrecvalue += ((self.tonnes[ind] * (self.blockmodel[OreGrade][ind])/100) * self.EPVparms[OreGrade[m]]['recovery'] * 
-                                            (self.EPVparms[OreGrade[m]]['mprice'] - self.EPVparms[OreGrade[m]]['sel_cost']))
+                            mrecvalue += (((self.tonnes[ind] * (self.blockmodel[OreGrade][ind])/100) * self.EPVparms[OreGrade[m]]['recovery'] * 
+                                            ((self.EPVparms[OreGrade[m]]['mprice'] - self.EPVparms[OreGrade[m]]['sel_cost']) * 2204)) * Rf)
                         else:
                             print("The Unit must be 'ozt' or 'percent'")
-
-                    #DEBUG
-                    print(mrecvalue)
-
 
                     #Block value for process calculation
                     block_value.append(mrecvalue - (self.tonnes[ind] * (self.MinCost + self.ProcCost)))
 
-
+                else: 
+                    print("The OreGrade and Unit must be passed.")
 
         #Create the EPV into blockmodel dataframe 
-        self.blockmodel['EPV'] = block_value
+        self.blockmodel[ColName] = block_value
 
         return self
+    
+    def calcEPVRf(self, OreGrade, Unit, Density, Rfmin:float, Rfmax:float, Rfstep:float):
+
+        #Calculate different revenue factors for nested pits 
+        RfList = []
+
+        self.RfColList = []
+
+        #Check the values 
+        try: 
+            i = Rfmin
+            RfList.append(Rfmin)
+            while i < Rfmax:
+                i += Rfstep
+                RfList.append(round(i, 2))
+
+            for i in range(len(RfList)): 
+                colName = f"EPV_RF_{RfList[i]}"
+                self.RfColList.append(colName)
+                self.calcEPV(OreGrade, Unit, Density, ColName=colName, Rf=RfList[i])
+
+        except Exception as e: print(e)
+
+        return self 
