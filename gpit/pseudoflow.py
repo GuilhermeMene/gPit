@@ -10,9 +10,8 @@ import networkx as NetX
 import pseudoflow as pf
 import pandas as pd
 
-import sys
-sys.path.append('D://03_Development//00_Projects//gPit')
-import gpit.precedence as prec
+from gpit import precedence as prec
+from gpit import logger as log
 
 class Pseudoflow:
 
