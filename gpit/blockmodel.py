@@ -121,13 +121,18 @@ class BlockModel:
             self.tonnes = [self.bmparms['volume'] * Density for bmlen in bmlen]
 
         for ind in self.blockmodel.index:
-            if self.blockmodel[OreGrade[0]][ind] < self.CutOffGrade:
+
+            if isinstance(OreGrade, str):
+                ore_grade = float(self.blockmodel[OreGrade][ind])
+            else:
+                ore_grade = float(self.blockmodel[OreGrade[0]][ind])
+
+            if ore_grade < self.CutOffGrade:
                 block_value.append(round((-self.MinCost * self.tonnes[ind]), 2))
             else: 
                 #Check if one or more metals 
                 #Only one metal passed as string 
                 if isinstance(OreGrade, str) and isinstance(Unit, str):
-
                     if Unit == 'ozt':
                         #Block value for process calculation
                         process_value = (((self.blockmodel[OreGrade][ind] * self.EPVparms[OreGrade]['recovery'] * self.tonnes[ind] *  
@@ -183,11 +188,11 @@ class BlockModel:
                 i += Rfstep
                 RfList.append(round(i, 2))
 
-            for i in range(len(RfList)): 
+            for i in range(0, len(RfList)): 
                 colName = f"EPV_RF_{RfList[i]}"
                 self.RfColList.append(colName)
                 self.calcEPV(OreGrade, Unit, Density, ColName=colName, Rf=RfList[i])
 
-        except Exception as e: print(e)
+        except Exception as e: log.datalogger(e)
 
         return self 

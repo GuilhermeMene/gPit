@@ -128,6 +128,8 @@ class Pseudoflow:
     
     def UPL_nestedPits(self, Rflist, precedence:str):
 
+        self.RfUPLlist = []
+
         #Run different pits based on revenue factors 
         if isinstance(Rflist, list):
             try: 
@@ -135,6 +137,8 @@ class Pseudoflow:
                     #Get the name of the upl 
                     rfname = Rflist[rf].split('_')
                     rfname = f"UPL_RF_{rfname[2]}"
+
+                    self.RfUPLlist.append(rfname)
 
                     self.UPL(EPV_column=Rflist[rf], precedence=precedence, uplName=rfname)
 
