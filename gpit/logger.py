@@ -13,9 +13,8 @@ if gpit.LOGPATH == '':
     directory = os.getcwd()
 
     filepath = os.path.join(directory, 'Log.txt')
-else: 
-    filepath = gpit.LOGPATH
-
+else:
+    filepath = os.path.join(gpit.LOGPATH, 'Log.txt')
 
 def datalogger(datatolog:str):
 

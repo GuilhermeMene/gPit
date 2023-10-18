@@ -5,7 +5,14 @@
 
 import pandas as pd
 import numpy as np 
+
+import os
+
 from gpit import logger as log
+from gpit import LOGPATH as path
+
+import pyvista as pv 
+import meshio
 
 def mergeNP(blockmodel, PitNames):
 
@@ -22,7 +29,6 @@ def mergeNP(blockmodel, PitNames):
                     for idx, row in blockmodel.iterrows():   
                         if row[PitNames[pn]] == 1:
                             mergedPit[idx] = pn+1
-
                 blockmodel['Pits'] = mergedPit
             except Exception as e: log.datalogger(e)            
         else: 
@@ -93,15 +99,78 @@ def calcStat(blockmodel, PitCol:str, epvCol:str, blockTonnes):
             npv = pitbm[epvCol].sum()
 
         else: 
-            log("The epvCol must be a string with the colume name to calculate the stats. ")
+            log.datalogger("The epvCol must be a string with the column name to calculate the final pit mesh. ")
     else: 
-        log("the blockmodel must be a padans dataframe. ")
+        log.datalogger("the blockmodel must be a pandas dataframe. ")
 
 
     return orevolume, wastevolume, npv
 
 
+def getPitCoords(blockmodel, pitCol:str, xCol='X', yCol='Y', zCol='Z'):
 
+    #Function to calculate the mesh from ultimate pit limit 
+    if isinstance(blockmodel, pd.DataFrame):
+        if isinstance(pitCol, str):
+
+            try:
+                mesh_v_index = []
+
+                count = 0   #DEBUG ONLY
+
+                #Get the first slice of the blockmodel 
+                xy = blockmodel[blockmodel[zCol] == max(blockmodel[zCol])]
+                xy = xy[[xCol, yCol]]
+
+                for i, row in xy.iterrows():
+
+                    column = blockmodel[(blockmodel[xCol] == row[xCol]) & (blockmodel[yCol] == row[yCol])]
+
+                    if column[pitCol].eq(1).any().any():
+                        col = column[column[pitCol] == 1] #Filter the outside pit data
+                        index = int(col[col[zCol] == min(col[zCol])].index.values)
+                    else:
+                        index = int(column[column[zCol] == max(column[zCol])].index.values)
+                        
+                    count += 1 #DEBUG ONLY
+                    #Save the index 
+                    mesh_v_index.append(index)
+
+                #Get the coordinates from list 
+                df = blockmodel.iloc[mesh_v_index]
+
+                df = df[[xCol, yCol, zCol]]
+
+            except Exception as e: log.datalogger(e)
+
+        else: 
+            log.datalogger("The pitCol must be a string with the colume name to calculate the stats. ")
+    else: 
+        log.datalogger("the blockmodel must be a pandas dataframe. ")
+        
+    return df
+
+def createMesh(blockmodel, pitCol:str, filename:str, xCol='X', yCol='Y', zCol='Z'):
+
+    #Function to calculate the mesh from ultimate pit limit 
+    if isinstance(blockmodel, pd.DataFrame):
+        if isinstance(pitCol, str):
+            try: 
+
+                coords = getPitCoords(blockmodel, pitCol, xCol='X', yCol='Y', zCol='Z')
+                points = np.column_stack([coords[xCol], coords[yCol], coords[zCol]])
+                cloud = pv.PolyData(points)
+                mesh = cloud.delaunay_2d()
+
+                #Save the mesh file 
+                filename = os.path.join(path, filename)
+                meshio.Mesh(points, {"triangle": mesh.regular_faces}).write(filename)
+
+            except Exception as e: print(e)
+        else:
+            log.datalogger("The pitCol must be a string with name of the Ultimate Pit Limit.")
+    else: 
+        log.datalogger("the blockmodel must be a pandas dataframe with xyz coordinates, and pit data. ")
 
 
 

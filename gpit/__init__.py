@@ -4,7 +4,7 @@
 
 from tkinter import filedialog
 from tkinter import *
-import os
+
 root = Tk()
 root.withdraw()
 
@@ -15,7 +15,7 @@ print("Please select the folder of log file.")
 try: 
     directory = filedialog.askdirectory()
 
-    LOGPATH = os.path.join(directory, 'Log.txt')
+    LOGPATH = directory
 
 except Exception as e: print(e)
 
