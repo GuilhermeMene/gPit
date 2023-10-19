@@ -3,7 +3,7 @@
 #Distributed under the terms of MIT License (https://github.com/GuilhermeMene/gPit/blob/main/LICENSE)
 
 #Based on Sebastian Avalos code disributed under MIT License 
-#https://github.com/geometatqueens/2020-Pseudoflow-Python
+#https://code.engineering.queensu.ca/geomet-group/2020-pseudoflow-python
 
 import numpy as np
 import networkx as NetX
@@ -36,7 +36,7 @@ class Pseudoflow:
         #Create the Sink 
         self.sink = np.int64(self.bmParms['nx'] * self.bmParms['ny'] * self.bmParms['nz'] + 1)
 
-    def UPL(self, EPV_column:str, precedence:str, uplName = 'upl'):
+    def UPL(self, EPV_column:str, precedence = '1x5x21', uplName = 'upl'):
 
                 #Set the EPV variable 
         self.EPV = np.asarray(self.blockmodel[EPV_column])
@@ -126,7 +126,7 @@ class Pseudoflow:
 
         return Graph
     
-    def UPL_nestedPits(self, Rflist, precedence:str):
+    def UPL_nestedPits(self, Rflist, precedence='1x5x21'):
 
         self.RfUPLlist = []
 

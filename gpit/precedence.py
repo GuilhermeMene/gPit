@@ -3,7 +3,7 @@
 #Distributed under the terms of MIT License (https://github.com/GuilhermeMene/gPit/blob/main/LICENSE)
 
 #Based on Sebastian Avalos code disributed under MIT License 
-#https://github.com/geometatqueens/2020-Pseudoflow-Python
+#https://code.engineering.queensu.ca/geomet-group/2020-pseudoflow-python
 
 import networkx as NetX
 
