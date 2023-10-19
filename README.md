@@ -36,6 +36,7 @@ A list of all libraries used under development of the gPit is provided in [Requi
 Dorit S. Hochbaum, 2008. "The Pseudoflow Algorithm: A New Algorithm for the Maximum-Flow Problem," Operations Research, INFORMS, vol. 56(4), pages 992-1009, August.
 
 Part of the gPit tool is based on the 2020 Avalos code distributed under an MIT license: 
+
 Avalos, S., Ortiz, JM (2020) A guide for pit optimization with Pseudoflow in python, Predictive Geometallurgy and Geostatistics Lab, Queen's University, Annual Report 2020 [Git Repo](https://code.engineering.queensu.ca/geomet-group/2020-pseudoflow-python)
 
 #### License
