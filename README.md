@@ -29,6 +29,7 @@ Some libraries are required to run the gPit software:
 * scipy
 * networkx
 * pseudoflow
+* meshio
 
 A list of all libraries used under development of the gPit is provided in [Requirements] (https://github.com/GuilhermeMene/gPit/blob/main/requirements.txt)
 
