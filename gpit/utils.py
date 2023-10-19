@@ -166,11 +166,14 @@ def createMesh(blockmodel, pitCol:str, filename:str, xCol='X', yCol='Y', zCol='Z
                 filename = os.path.join(path, filename)
                 meshio.Mesh(points, {"triangle": mesh.regular_faces}).write(filename)
 
-            except Exception as e: print(e)
+            except Exception as e: log.datalogger(e)
         else:
             log.datalogger("The pitCol must be a string with name of the Ultimate Pit Limit.")
     else: 
         log.datalogger("the blockmodel must be a pandas dataframe with xyz coordinates, and pit data. ")
+
+
+
 
 
 

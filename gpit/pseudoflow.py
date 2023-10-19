@@ -24,14 +24,14 @@ class Pseudoflow:
             if isinstance(blockmodel, pd.DataFrame):
                 self.blockmodel = blockmodel
             else: 
-                print("The blockmodel must be a pandas Dataframe")
+                log.datalogger("The blockmodel must be a pandas Dataframe")
 
             if len(bmParms) == 10: 
                 self.bmParms = bmParms
             else: 
-                print("The blockmodel Parameters must contain 10 parameters - Set the blockmodel parameters first")
+                log.datalogger("The blockmodel Parameters must contain 10 parameters - Set the blockmodel parameters first")
 
-        except Exception as e: print(e)
+        except Exception as e: log.datalogger(e)
 
         #Create the Sink 
         self.sink = np.int64(self.bmParms['nx'] * self.bmParms['ny'] * self.bmParms['nz'] + 1)
@@ -69,7 +69,7 @@ class Pseudoflow:
                                 elif precedence == '1x9':
                                     self.Graph = prec.IA1x9(pos_x, pos_y, pos_z, self.bmParms['nx'], self.bmParms['ny'], self.Graph)
                                 else:
-                                    print("The precedence must be '5x1', '9x1', '1x5x13', '1x5x21' or '1x1x5' ")
+                                    log.datalogger("The precedence must be '5x1', '9x1', '1x5x13', '1x5x21' or '1x1x5' ")
                                     break
 
                 else: 
@@ -86,7 +86,7 @@ class Pseudoflow:
                                 elif precedence == '1x1x5':
                                     self.Graph = prec.IA1x1x5(pos_x, pos_y, pos_z, self.bmParms['nx'], self.bmParms['ny'], self.Graph)
                                 else: 
-                                    print("The precedence must be '5x1', '9x1', '1x5x13', '1x5x21' or '1x1x5' ")
+                                    log.datalogger("The precedence must be '5x1', '9x1', '1x5x13', '1x5x21' or '1x1x5' ")
                                     break
 
                 #Solving the minimum cut problem via pf.hpf solver
@@ -101,10 +101,10 @@ class Pseudoflow:
                     # Set blocks inside UPL as one
                     self.upl[np.int64(InsideList[indUPL] - 1)] = 1  
 
-            except Exception as e: print(e)
+            except Exception as e: log.datalogger(e)
 
         else:
-            print("The pit has negative values only.")
+            log.datalogger("The pit has negative values only.")
 
         #Save the result of the UPL into dict 
         self.resultUpl[uplName] = self.upl
@@ -142,9 +142,9 @@ class Pseudoflow:
 
                     self.UPL(EPV_column=Rflist[rf], precedence=precedence, uplName=rfname)
 
-            except Exception as e: print(e)
+            except Exception as e: log.datalogger(e)
 
         else:
-            print("The revenue factors must be a list.")
+            log.datalogger("The revenue factors must be a list.")
         return self
 

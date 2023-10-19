@@ -22,7 +22,7 @@ class BlockModel:
         except:
             try: 
                 self.blockmodel = pd.read_csv(bmpath, delimiter=';')
-            except Exception as e: print(e)
+            except Exception as e: log.datalogger(e)
 
         log.datalogger("The blockmodel has been loaded.")
 
@@ -61,7 +61,7 @@ class BlockModel:
         except:
             try: 
                 epv_df = pd.read_csv(EPVpath, delimiter=';')
-            except Exception as e: print(e)
+            except Exception as e: log.datalogger(e)
 
         if len(epv_df) > 1:
             #Get parameters from each metal in table 
@@ -94,17 +94,17 @@ class BlockModel:
                 self.CutOffGrade = ((self.MinCost + (self.ProcCost*(1 + self.EPVparms[metal]['dilution']))) / 
                                         (((self.EPVparms[metal]['mprice'] - self.EPVparms[metal]['sel_cost'])*22.046)*self.EPVparms[metal]['recovery']))
             except: 
-                print("Set the economic parameters first")
+                log.datalogger("Set the economic parameters first")
 
         elif unit == 'ozt':
             try:
                 self.CutOffGrade = (((self.MinCost + (self.ProcCost*(1 + self.EPVparms[metal]['dilution']))) / 
                                     ((self.EPVparms[metal]['mprice'] - self.EPVparms[metal]['sel_cost'])*self.EPVparms[metal]['recovery']))*31.1)
             except:
-                print("Set the economic parameters first")
+                log.datalogger("Set the economic parameters first")
 
         else: 
-            print("Set the correct unit for the Cut-Off grade calculation")
+            log.datalogger("Set the correct unit for the Cut-Off grade calculation")
 
         return self
 
@@ -160,13 +160,13 @@ class BlockModel:
                                 mrecvalue += (((self.tonnes[ind] * (self.blockmodel[OreGrade[m]][ind])/100) * self.EPVparms[OreGrade[m]]['recovery'] * 
                                                 ((self.EPVparms[OreGrade[m]]['mprice'] - self.EPVparms[OreGrade[m]]['sel_cost']) * 2204)) * Rf)
                         except:
-                            print("The Unit must be 'ozt' or 'percent'", ind)
+                            log.datalogger("The Unit must be 'ozt' or 'percent'", ind)
 
                     #Block value for process calculation
                     block_value.append(round((mrecvalue - (self.tonnes[ind] * (self.MinCost + self.ProcCost))), 2))
 
                 else: 
-                    print("The OreGrade and Unit must be passed.")
+                    log.datalogger("The OreGrade and Unit must be passed.")
 
         #Create the EPV into blockmodel dataframe 
         self.blockmodel[ColName] = block_value
